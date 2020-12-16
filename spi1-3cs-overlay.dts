@@ -1,0 +1,149 @@
+/dts-v1/;
+/plugin/;
+
+
+/ {
+	compatible = "brcm,bcm2835";
+
+	fragment@0 {
+		target = <&gpio>;
+		__overlay__ {
+			spi1_pins: spi1_pins {
+				brcm,pins = <19 20 21>;
+				brcm,function = <3>; /* alt4 */
+			};
+
+			spi1_cs_pins: spi1_cs_pins {
+				brcm,pins = <18 17 16>;
+				brcm,function = <1>; /* output */
+			};
+
+			max14830_pins: max_14830_pins {
+				brcm,pins = <22>;
+				brcm,function = <0>; /* in */
+				brcm,pull = <0>; /* none */
+			};
+
+			max14830_pins1: max_14830_pins1 {
+				brcm,pins = <23>;
+				brcm,function = <0>; /* in */
+				brcm,pull = <0>; /* none */
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&spi1>;
+		frag1: __overlay__ {
+			/* needed to avoid dtc warning */
+			#address-cells = <1>;
+			#size-cells = <0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&spi1_pins &spi1_cs_pins>;
+			cs-gpios = <&gpio 18 1>, <&gpio 17 1>, <&gpio 16 1>;
+			status = "okay";
+
+			max14830_1: max14830_1@0 {
+				compatible = "maxim,max14830y";
+				reg = <0>; /* CE0 */
+				clocks = <&max_oscy>;
+				clock-names = "xtal1";
+				spi-max-frequency = <12000000>;
+				status = "okay";
+				pinctrl-names = "default";
+				pinctrl-0 = <&max14830_pins>;
+				interrupt-parent = <&gpio>;
+				interrupts = <22 0x2>; /* falling edge */
+
+				max_oscy: max_oscy {
+					compatible = "fixed-clock";
+					#clock-cells = <0>;
+					clock-frequency = <3686400>;   /* 2 MHz */
+				};
+
+			};
+
+			max14830_2: max14830_2@1 {
+				compatible = "maxim,max14830y";
+				reg = <1>; /* CE1 */
+				clocks = <&max_osc1>;
+				clock-names = "xtal1";
+				spi-max-frequency = <12000000>;
+				status = "okay";
+				pinctrl-names = "default";
+				pinctrl-0 = <&max14830_pins1>;
+				interrupt-parent = <&gpio>;
+				interrupts = <23 0x2>; /* falling edge */
+				max_osc1: max_osc {
+					compatible = "fixed-clock";
+					#clock-cells = <0>;
+					clock-frequency = <3686400>;   /* 2 MHz */
+				};
+			};
+
+			sc16is752: sc16is752@2 {
+				compatible = "nxp,sc16is752";
+				reg = <2>; /* CE2 */
+				clocks = <&sc16is752_clk>;
+				interrupt-parent = <&gpio>;
+				interrupts = <24 2>; /* IRQ_TYPE_EDGE_FALLING */
+				#gpio-controller;
+				#gpio-cells = <2>;
+				spi-max-frequency = <4000000>;
+
+				sc16is752_clk: sc16is752_clk {
+					compatible = "fixed-clock";
+					#clock-cells = <0>;
+					clock-frequency = <3686400>;
+
+				};
+			};
+
+			spidev1_0: spidev@0 {
+				compatible = "spidev";
+				reg = <0>;      /* CE0 */
+				#address-cells = <1>;
+				#size-cells = <0>;
+				spi-max-frequency = <125000000>;
+				status = "disabled";
+			};
+
+			spidev1_1: spidev@1 {
+				compatible = "spidev";
+				reg = <1>;      /* CE1 */
+				#address-cells = <1>;
+				#size-cells = <0>;
+				spi-max-frequency = <125000000>;
+				status = "disabled";
+			};
+
+			spidev1_2: spidev@2 {
+				compatible = "spidev";
+				reg = <2>;      /* CE2 */
+				#address-cells = <1>;
+				#size-cells = <0>;
+				spi-max-frequency = <125000000>;
+				status = "disabled";
+			};
+		};
+	};
+
+	fragment@2 {
+		target = <&aux>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	__overrides__ {
+		cs0_pin  = <&spi1_cs_pins>,"brcm,pins:0",
+			   <&frag1>,"cs-gpios:4";
+		cs1_pin  = <&spi1_cs_pins>,"brcm,pins:4",
+			   <&frag1>,"cs-gpios:16";
+		cs2_pin  = <&spi1_cs_pins>,"brcm,pins:8",
+			   <&frag1>,"cs-gpios:28";
+		cs0_spidev = <&spidev1_0>,"status";
+		cs1_spidev = <&spidev1_1>,"status";
+		cs2_spidev = <&spidev1_2>,"status";
+	};
+};
